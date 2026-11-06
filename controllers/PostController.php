@@ -17,26 +17,42 @@ use yii\web\UploadedFile;
 class PostController extends Controller
 {
     /**
+     * Fungsi helper terpusat untuk mendeteksi apakah user yang login adalah Admin
+     */
+    private function isAdminUser()
+    {
+        $identity = Yii::$app->user->identity;
+        if (!$identity) {
+            return false;
+        }
+        $username = strtolower($identity->username ?? '');
+        $role = strtolower($identity->role ?? '');
+
+        // Validasi true jika role adalah admin ATAU username mengandung 'adm'/'admin'
+        return ($role === 'admin' || $username === 'admin' || strpos($username, 'adm') === 0);
+    }
+
+    /**
      * @inheritdoc
      */
     public function behaviors()
     {
         return [
-	'access' => [
-                'class' => AccessControl::className(),
+            'access' => [
+                'class' => \yii\filters\AccessControl::className(),
                 'rules' => [
                     [
-                        'actions' => ['index', 'create', 'update', 'delete', 'view'],
+                        'actions' => ['index', 'view', 'create', 'update', 'delete', 'submit-review', 'approval', 'process-approval'],
                         'allow' => true,
-                        'roles' => ['Author', 'Admin'],
+                        'roles' => ['@'], 
                     ],
                 ],
             ],
-
             'verbs' => [
-                'class' => VerbFilter::className(),
+                'class' => \yii\filters\VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
+                    'process-approval' => ['POST'],
                 ],
             ],
         ];
@@ -48,8 +64,21 @@ class PostController extends Controller
      */
     public function actionIndex()
     {
-        $dataProvider = new ActiveDataProvider([
-            'query' => Post::find()->orderby('date DESC'),
+        $query = \app\models\Post::find();
+        $username = Yii::$app->user->identity->username;
+
+        // Gunakan helper isAdminUser()
+        if (!$this->isAdminUser()) {
+            $query->andWhere(['username' => $username]);
+        }
+
+        $dataProvider = new \yii\data\ActiveDataProvider([
+            'query' => $query,
+            'sort' => [
+                'defaultOrder' => [
+                    'date' => SORT_DESC,
+                ]
+            ],
         ]);
 
         return $this->render('index', [
@@ -65,14 +94,37 @@ class PostController extends Controller
      */
     public function actionView($id)
     {
+        $model = $this->findModel($id);
+        $isAdmin = $this->isAdminUser();
+
+        // Jika Admin mengirimkan keputusan review langsung dari halaman view
+        if ($isAdmin && Yii::$app->request->isPost) {
+            $action = Yii::$app->request->post('action'); // 'approve' atau 'reject'
+            $note = Yii::$app->request->post('admin_note'); // Alasan revisi
+
+            if ($action === 'approve') {
+                $model->status = 'approved';
+                $model->reviewed_at = date('Y-m-d H:i:s');
+                $model->admin_note = null;
+                $model->save(false);
+                Yii::$app->session->setFlash('success', 'Artikel berhasil disetujui (Approved).');
+            } elseif ($action === 'reject') {
+                $model->status = 'reject';
+                $model->reviewed_at = date('Y-m-d H:i:s');
+                $model->admin_note = !empty($note) ? $note : 'Mohon lakukan revisi pada konten artikel Anda.';
+                $model->save(false);
+                Yii::$app->session->setFlash('success', 'Artikel ditolak dan catatan revisi dikirim ke author.');
+            }
+
+            return $this->refresh(); // Refresh halaman untuk melihat perubahan status
+        }
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $model,
         ]);
     }
-
     /**
      * Creates a new Post model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
      * @return mixed
      */
     public function actionCreate()
@@ -81,52 +133,100 @@ class PostController extends Controller
 
         if ($model->load(Yii::$app->request->post())) {
             
-            // Logika Upload Thumbnail
-            $model->imageFile = UploadedFile::getInstance($model, 'imageFile');
-            if ($model->imageFile) {
-                // Buat nama file unik
-                $filename = time() . '_' . $model->imageFile->baseName . '.' . $model->imageFile->extension;
-                // Simpan ke folder web/uploads
-                $model->imageFile->saveAs('uploads/' . $filename);
-                $model->thumbnail = $filename;
+            $model->username = Yii::$app->user->identity->username;
+            $model->date = date('Y-m-d H:i:s');
+            
+            $isAdmin = $this->isAdminUser();
+
+            if (!$isAdmin) {
+                if (!in_array($model->status, ['draft', 'pending'])) {
+                    $model->status = 'draft';
+                }
+                $model->admin_note = null;
+            } else {
+                if (empty($model->status)) {
+                    $model->status = 'approved';
+                }
             }
 
-            if ($model->save(false)) { // false agar validasi imageFile tidak memblokir simpan
-                Yii::$app->session->setFlash('success', 'Artikel berhasil dibuat!');
-                return $this->redirect(['index']);
+            $model->imageFile = UploadedFile::getInstance($model, 'imageFile');
+            if ($model->imageFile) {
+                $filename = time() . '_' . $model->imageFile->baseName . '.' . $model->imageFile->extension;
+                $uploadPath = 'uploads/' . $filename;
+                
+                if ($model->imageFile->saveAs($uploadPath)) {
+                    $model->thumbnail = $filename;
+                }
+            }
+
+            try {
+                if ($model->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Artikel berhasil dibuat!');
+                    return $this->redirect(['index']);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Gagal menyimpan data artikel.');
+                }
+            } catch (\Exception $e) {
+                Yii::$app->session->setFlash('error', 'Database Exception: ' . $e->getMessage());
             }
         }
 
-        return $this->render('create', ['model' => $model]);
+        return $this->render('create', [
+            'model' => $model,
+        ]);
     }
 
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
-        $oldThumbnail = $model->thumbnail; // Simpan nama file lama
+        $oldThumbnail = $model->thumbnail; 
 
         if ($model->load(Yii::$app->request->post())) {
             
+            $isAdmin = $this->isAdminUser();
+
+            if (!$isAdmin) {
+                if (!in_array($model->status, ['draft', 'pending'])) {
+                    $model->status = 'draft';
+                }
+                $model->admin_note = $model->oldAttributes['admin_note'] ?? null; 
+            } else {
+                if (in_array($model->status, ['approved', 'reject'])) {
+                    $model->reviewed_at = date('Y-m-d H:i:s');
+                }
+            }
+
             $model->imageFile = UploadedFile::getInstance($model, 'imageFile');
             if ($model->imageFile) {
                 $filename = time() . '_' . $model->imageFile->baseName . '.' . $model->imageFile->extension;
-                $model->imageFile->saveAs('uploads/' . $filename);
-                $model->thumbnail = $filename;
+                $uploadPath = 'uploads/' . $filename;
+                
+                if ($model->imageFile->saveAs($uploadPath)) {
+                    $model->thumbnail = $filename;
+                }
             } else {
-                $model->thumbnail = $oldThumbnail; // Gunakan yang lama jika tidak ada upload baru
+                $model->thumbnail = $oldThumbnail; 
             }
 
-            if ($model->save(false)) {
-                Yii::$app->session->setFlash('success', 'Artikel berhasil diperbarui!');
-                return $this->redirect(['index']);
+            try {
+                if ($model->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Artikel berhasil diperbarui!');
+                    return $this->redirect(['index']);
+                } else {
+                    Yii::$app->session->setFlash('error', 'Gagal memperbarui artikel.');
+                }
+            } catch (\Exception $e) {
+                Yii::$app->session->setFlash('error', 'Database Exception: ' . $e->getMessage());
             }
         }
 
-        return $this->render('update', ['model' => $model]);
+        return $this->render('update', [
+            'model' => $model,
+        ]);
     }
+
     /**
      * Deletes an existing Post model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
      * @param integer $id
      * @return mixed
      * @throws NotFoundHttpException if the model cannot be found
@@ -137,26 +237,103 @@ class PostController extends Controller
             $this->findModel($id)->delete();
             Yii::$app->session->setFlash('success', 'Artikel berhasil dihapus!');
         } catch (\Exception $e) {
-            // Tangkap error jika artikel tidak bisa dihapus (misal: berelasi dengan data lain)
             Yii::$app->session->setFlash('error', 'Gagal menghapus artikel: ' . $e->getMessage());
         }
 
         return $this->redirect(['index']);
     }
 
+    public function actionSubmitReview($id)
+    {
+        $model = $this->findModel($id);
+        $username = Yii::$app->user->identity->username;
+        $isAdmin = $this->isAdminUser();
+
+        if ($isAdmin || $model->username === $username) {
+            if (in_array($model->status, ['draft', 'reject'])) {
+                $model->status = 'pending';
+                $model->submitted_at = date('Y-m-d H:i:s');
+                
+                if ($model->status === 'reject' || !empty($model->admin_note)) {
+                    $model->revision_count += 1;
+                }
+
+                $model->admin_note = null; 
+                $model->save(false);
+                Yii::$app->session->setFlash('success', 'Artikel berhasil disubmit untuk review.');
+            }
+        }
+        return $this->redirect(['index']);
+    }
+
+    public function actionApproval()
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Anda tidak memiliki hak akses ke halaman Approval.');
+        }
+
+        $query = \app\models\Post::find()->where(['status' => 'pending'])->orderBy(['submitted_at' => SORT_DESC]);
+        
+        $dataProvider = new \yii\data\ActiveDataProvider([
+            'query' => $query,
+            'pagination' => [
+                'pageSize' => 10,
+            ],
+        ]);
+
+        return $this->render('approval', [
+            'dataProvider' => $dataProvider,
+        ]);
+    }
+
+    public function actionProcessApproval($id)
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Aksi ditolak.');
+        }
+
+        $model = $this->findModel($id);
+        $action = Yii::$app->request->post('action'); 
+        $note = Yii::$app->request->post('admin_note'); 
+
+        if ($action === 'approve') {
+            $model->status = 'approved';
+            $model->reviewed_at = date('Y-m-d H:i:s');
+            $model->admin_note = null;
+            $model->save(false);
+            Yii::$app->session->setFlash('success', 'Artikel "' . $model->title . '" berhasil disetujui (Approved).');
+        } elseif ($action === 'reject') {
+            $model->status = 'reject';
+            $model->reviewed_at = date('Y-m-d H:i:s');
+            $model->admin_note = !empty($note) ? $note : 'Mohon lakukan revisi pada konten artikel Anda.';
+            $model->save(false);
+            Yii::$app->session->setFlash('success', 'Artikel "' . $model->title . '" ditolak dan catatan revisi telah dikirim ke author.');
+        }
+
+        return $this->redirect(['approval']);
+    }
+
     /**
      * Finds the Post model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
      * @param integer $id
      * @return Post the loaded model
      * @throws NotFoundHttpException if the model cannot be found
      */
     protected function findModel($id)
     {
-        if (($model = Post::findOne($id)) !== null) {
+        if (($model = \app\models\Post::findOne($id)) !== null) {
+            
+            $username = Yii::$app->user->identity->username;
+            $isAdmin = $this->isAdminUser();
+
+            // Jika bukan admin, pastikan hanya bisa akses artikel miliknya sendiri
+            if (!$isAdmin && $model->username !== $username) {
+                throw new \yii\web\ForbiddenHttpException('Anda tidak berhak mengakses atau mengedit artikel milik orang lain.');
+            }
+            
             return $model;
         }
 
-        throw new NotFoundHttpException('The requested page does not exist.');
+        throw new \yii\web\NotFoundHttpException('The requested page does not exist.');
     }
 }

@@ -40,7 +40,8 @@ class Post extends \yii\db\ActiveRecord
             [['status'], 'string', 'max' => 20],
             [['status'], 'in', 'range' => ['draft', 'pending', 'approved', 'reject']],
             [['thumbnail'], 'string', 'max' => 255],
-            [['imageFile'], 'file', 'skipOnEmpty' => true, 'extensions' => 'png, jpg, jpeg'],
+            [['imageFile'], 'file', 'skipOnEmpty' => true, 'extensions' => 'png, jpg, jpeg, webp'],
+            [['admin_note'], 'string']
             
 
         ];
@@ -75,6 +76,23 @@ class Post extends \yii\db\ActiveRecord
             'pending' => 'Pending',
             'approved' => 'Approved',
             'reject' => 'Reject'
+        ];
+    }
+    public static function getStatusListForAuthor()
+    {
+        return [
+            'draft' => 'Draft (Simpan Saja)',
+            'pending' => 'Submit untuk Review',
+        ];
+    }
+
+    public static function getStatusListForAdmin()
+    {
+        return [
+            'draft' => 'Draft',
+            'pending' => 'Pending (Menunggu Review)',
+            'approved' => 'Approved (Setujui)',
+            'reject' => 'Reject (Tolak)',
         ];
     }
 }

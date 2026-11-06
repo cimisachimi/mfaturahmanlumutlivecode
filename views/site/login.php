@@ -60,13 +60,15 @@ $this->title = 'Welcome Back';
 
                 <?php ActiveForm::end(); ?>
                 
-            </div>
-            
-            <!-- Optional: Hint Text -->
-            <div class="text-center" style="margin-top: 20px; color: #008000; font-size: 13px;">
-                <p>Login menggunakan akun <strong>admin/admin</strong> atau <strong>demo/demo</strong>.</p>
-            </div>
+                <!-- BAGIAN REGISTRASI AUTHOR -->
+                <div class="text-center" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eaeaea;">
+                    <span style="color: #666; font-size: 14px;">Belum punya akun?</span><br>
+                    <?= Html::a('Daftar sebagai Author', ['site/signup'], [
+                        'style' => 'color: #2FA084; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 8px; font-size: 15px;'
+                    ]) ?>
+                </div>
 
+            </div>
         </div>
     </div>
 </div>

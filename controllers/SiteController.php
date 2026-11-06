@@ -73,9 +73,9 @@ class SiteController extends Controller
         }
 
 
-public function actionMobile(){
-	 return $this->render('mobile');
-}
+    public function actionMobile(){
+        return $this->render('mobile');
+    }
 
     /**
      * Login action.
@@ -135,5 +135,51 @@ public function actionMobile(){
     public function actionAbout()
     {
         return $this->render('about');
+    }
+
+    public function actionSignup()
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->goHome();
+        }
+
+        $model = new \app\models\Account();
+        
+        // Ambil data POST secara mentah untuk menghindari blokir rules() bawaan Yii2
+        $postData = Yii::$app->request->post('Account');
+
+        if ($postData) {
+            try {
+                // 1. Assign nilai secara manual
+                $model->username = $postData['username'];
+                $model->name = !empty($postData['name']) ? $postData['name'] : $postData['username'];
+                $model->role = 'Author';
+
+                // 2. Hash Password
+                if (!empty($postData['password'])) {
+                    $model->password = Yii::$app->security->generatePasswordHash($postData['password']);
+                }
+
+                // 3. Simpan ke database (false = lewati validasi rules Yii, biarkan DB yang memvalidasi)
+                if ($model->save(false)) {
+                    Yii::$app->session->setFlash('success', 'Pendaftaran berhasil! Silakan login dengan akun baru Anda.');
+                    return $this->redirect(['login']);
+                }
+                
+            } catch (\yii\db\Exception $e) {
+                // Menangkap Error #23000 dari Database
+                if (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1062) {
+                    // Kode 1062 = Duplicate Entry
+                    Yii::$app->session->setFlash('error', 'Pendaftaran gagal: Username tersebut sudah digunakan. Silakan pilih username lain.');
+                } else {
+                    // Error constraint lainnya (misal ada kolom lain yang wajib diisi di tabel Anda)
+                    Yii::$app->session->setFlash('error', 'Pendaftaran gagal: Pastikan semua kolom terisi. (Detail: ' . $e->errorInfo[2] . ')');
+                }
+            }
+        }
+
+        return $this->render('signup', [
+            'model' => $model,
+        ]);
     }
 }

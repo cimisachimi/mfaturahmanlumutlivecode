@@ -1,78 +1,83 @@
 <?php
 
+/* @var $this yii\web\View */
 use yii\helpers\Html;
-use yii\helpers\StringHelper;
+use yii\helpers\Url;
 
-/** @var yii\web\View $this */
-/** @var app\models\Post[] $posts */
-
-$this->title = 'Home - My Blog';
+$this->title = 'LumutBlog - Beranda';
 ?>
 <div class="site-index">
 
-    <!-- Header Banner -->
-    <div class="jumbotron text-center" style="background-color: #FFFFFF; border-bottom: 3px solid #2FA084; padding: 40px 20px; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <h1 style="color: #008000; font-weight: 800; font-size: 3em;">Selamat Datang!</h1>
-        <p class="lead" style="color: #555; font-size: 1.2em;">Temukan berbagai artikel dan pembaruan terbaru di sini.</p>
+    <!-- Jumbotron Banner -->
+    <div class="jumbotron" style="background: linear-gradient(135deg, #008000 0%, #2FA084 100%); color: white; border-radius: 12px; padding: 50px 30px; margin-bottom: 40px; box-shadow: 0 10px 30px rgba(0,128,0,0.15);">
+        <h1 style="font-weight: 800; font-size: 42px; letter-spacing: -1px;">Selamat Datang di LumutBlog</h1>
+        <p class="lead" style="font-size: 18px; opacity: 0.9; margin-top: 15px;">
+            Platform publikasi artikel modern dengan arsitektur bersih, cepat, dan bernuansa hijau alami.
+        </p>
+        <?php if (Yii::$app->user->isGuest): ?>
+            <p style="margin-top: 25px;">
+                <a class="btn btn-lg" href="<?= Url::to(['site/login']) ?>" style="background-color: #ffffff; color: #008000; font-weight: bold; border-radius: 25px; padding: 12px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Mulai Menulis</a>
+            </p>
+        <?php else: ?>
+            <p style="margin-top: 25px;">
+                <a class="btn btn-lg" href="<?= Url::to(['post/index']) ?>" style="background-color: #ffffff; color: #008000; font-weight: bold; border-radius: 25px; padding: 12px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Kelola Artikel Saya</a>
+            </p>
+        <?php endif; ?>
     </div>
 
-    <!-- Artikel Grid -->
+    <!-- Daftar Artikel Publik (Hanya yang Approved) -->
     <div class="body-content">
+        <h2 style="color: #008000; font-weight: 800; margin-bottom: 30px; border-bottom: 2px solid #2FA084; padding-bottom: 10px; display: inline-block;">Artikel Terbaru</h2>
+
         <div class="row">
-            <?php if (!empty($posts)): ?>
+            <?php 
+            // Ambil hanya artikel yang sudah approved untuk halaman utama publik
+            $posts = \app\models\Post::find()->where(['status' => 'approved'])->orderBy(['date' => SORT_DESC])->all();
+            
+            if (empty($posts)): 
+            ?>
+                <div class="col-lg-12">
+                    <div class="alert alert-info" style="border-radius: 8px; padding: 20px;">
+                        Belum ada artikel yang dipublikasikan saat ini. Silakan cek kembali nanti!
+                    </div>
+                </div>
+            <?php else: ?>
                 <?php foreach ($posts as $post): ?>
-                    
-                    <div class="col-md-4 col-sm-6" style="margin-bottom: 30px;">
-                        <!-- Card Desain -->
-                        <div class="post-card" style="background-color: #FFFFFF; border-radius: 8px; border: 1px solid #eee; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); height: 100%; display: flex; flex-direction: column;">
+                    <div class="col-lg-4 col-md-6" style="margin-bottom: 30px;">
+                        <div class="panel panel-default" style="border: none; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.3s ease; height: 100%;">
                             
-                            <!-- Judul Artikel -->
-                            <h3 style="color: #008000; margin-top: 0; font-weight: bold; line-height: 1.4;">
-                                <?= Html::encode($post->title) ?>
-                            </h3>
-														<!-- Menampilkan Thumbnail Jika Ada -->
-                            <?php if ($post->thumbnail): ?>
-                                <div style="margin: -25px -25px 20px -25px; overflow: hidden; border-radius: 8px 8px 0 0; border-bottom: 3px solid #2FA084;">
-                                    <img src="<?= Yii::getAlias('@web/uploads/') . $post->thumbnail ?>" style="width: 100%; height: 200px; object-fit: cover;">
+                            <!-- Thumbnail Card -->
+                            <?php if (!empty($post->thumbnail)): ?>
+                                <div style="height: 200px; overflow: hidden; background: #eee;">
+                                    <img src="<?= Yii::$app->request->baseUrl . '/uploads/' . Html::encode($post->thumbnail) ?>" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                            <?php else: ?>
+                                <div style="height: 100px; background: linear-gradient(45deg, #008000, #2FA084); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                    LumutBlog Article
                                 </div>
                             <?php endif; ?>
-                            
-                            <!-- Judul Artikel -->
-                            <h3 style="color: #008000; margin-top: 0; font-weight: bold; line-height: 1.4;">
-                            
-                            <!-- Meta Data (Penulis & Tanggal) -->
-                            <div style="color: #888; font-size: 12px; margin-bottom: 15px; border-bottom: 1px solid #2FA084; padding-bottom: 10px;">
-                                <span class="glyphicon glyphicon-user" style="color: #2FA084;"></span> 
-                                <?= Html::encode($post->username) ?> &nbsp;&nbsp;
-                                
-                                <span class="glyphicon glyphicon-calendar" style="color: #2FA084;"></span> 
-                                <?= Html::encode(date('d M Y', strtotime($post->date))) ?>
+
+                            <div class="panel-body" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <span style="color: #2FA084; font-size: 12px; font-weight: bold; text-transform: uppercase;"><?= date('d M Y', strtotime($post->date)) ?></span>
+                                    <h3 style="color: #008000; font-weight: 700; font-size: 18px; margin-top: 8px; margin-bottom: 12px; line-height: 1.4;">
+                                        <?= Html::a(Html::encode($post->title), ['post/view', 'id' => $post->idpost], ['style' => 'color: #008000; text-decoration: none;']) ?>
+                                    </h3>
+                                    <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                                        <?= \yii\helpers\StringHelper::truncate(strip_tags($post->content), 100, '...') ?>
+                                    </p>
+                                </div>
+
+                                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 13px; color: #888;">Oleh <strong><?= Html::encode($post->username) ?></strong></span>
+                                    <?= Html::a('Baca Selengkapnya &rarr;', ['post/view', 'id' => $post->idpost], [
+                                        'style' => 'color: #2FA084; font-weight: bold; font-size: 13px; text-decoration: none;'
+                                    ]) ?>
+                                </div>
                             </div>
-                            
-                            <!-- Preview Konten -->
-                            <div style="color: #444; font-size: 14px; line-height: 1.6; margin-bottom: 20px; flex-grow: 1;">
-                                <!-- Menghapus tag HTML bawaan WYSIWYG dan memotong teks agar seragam 30 kata -->
-                                <?= StringHelper::truncateWords(strip_tags($post->content), 30) ?>
-                            </div>
-                            
-                            <!-- Label Status Approved -->
-                            <div style="text-align: right;">
-                                <span class="label" style="background-color: #2FA084; padding: 6px 12px; border-radius: 4px; font-size: 11px;">
-                                    Verified Article
-                                </span>
-                            </div>
-                            
                         </div>
                     </div>
-
                 <?php endforeach; ?>
-            <?php else: ?>
-                <!-- Empty State jika belum ada artikel -->
-                <div class="col-md-12 text-center" style="padding: 50px 0;">
-                    <span class="glyphicon glyphicon-inbox" style="font-size: 4em; color: #ccc; margin-bottom: 20px;"></span>
-                    <h3 style="color: #008000;">Belum Ada Artikel</h3>
-                    <p style="color: #777;">Belum ada artikel yang diterbitkan atau disetujui saat ini.</p>
-                </div>
             <?php endif; ?>
         </div>
     </div>
