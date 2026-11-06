@@ -4,7 +4,6 @@
 /* @var $content string */
 
 use app\assets\AppAsset;
-use app\widgets\Alert;
 use yii\bootstrap\Nav;
 use yii\bootstrap\NavBar;
 use yii\helpers\Html;
@@ -22,7 +21,6 @@ AppAsset::register($this);
     <?php $this->registerCsrfMetaTags() ?>
     <title><?= Html::encode($this->title) ?></title>
     
-    <!-- Import Font Modern 'Inter' -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
@@ -30,16 +28,24 @@ AppAsset::register($this);
     <?php $this->head() ?>
     
     <style>
-        body { 
+        html, body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #f9fbfa; 
+            background-color: #E5EDDA !important;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .wrap, .wrap > .container, .site-index {
+            background-color: transparent !important; 
+            flex: 1 0 auto;
         }
 
-        /* --- STYLING NAVBAR --- */
         .navbar-inverse {
             background-color: #FFFFFF !important;
             border: none !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
         }
 
         .navbar-nav > li > a {
@@ -47,51 +53,39 @@ AppAsset::register($this);
             padding-bottom: 15px !important;
             color: #333 !important;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
         }
 
-        /* MATIKAN PAKSA GARIS BAWAH YANG BIKIN RUSAK */
         .navbar-nav > li.active > a,
         .navbar-nav > .active > a,
         .navbar-nav > li.active > a:focus,
         .navbar-nav > li.active > a:hover {
             color: #008000 !important;
             background-color: transparent !important;
-            border-bottom: none !important; /* Hapus border */
+            border-bottom: none !important;
         }
         
         .navbar-nav > li > a:after,
         .navbar-nav > li.active > a:after {
-            display: none !important; /* Hapus garis melayang */
+            display: none !important;
             content: none !important;
         }
 
-        /* Efek Sentuh (Hover) Tombol CTA */
         .login-cta > a:hover {
-            background-color: #24826b !important;
+            background-color: #2FA084 !important;
             color: #FFFFFF !important;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(47,160,132,0.4) !important;
         }
         .signup-cta > a:hover {
-            background-color: #006600 !important;
-            color: #FFFFFF !important;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,128,0,0.3) !important;
+            background-color: #24826b !important;
+            box-shadow: 0 4px 10px rgba(47,160,132,0.3) !important;
         }
 
-        .navbar-brand {
+        .navbar-brand, .navbar-form {
             display: flex !important;
             align-items: center !important;
             height: 50px;
-        }
-        
-        .navbar-form {
             padding: 0 !important;
             margin: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            height: 50px;
         }
         
         .user-info-nav {
@@ -102,15 +96,44 @@ AppAsset::register($this);
             color: #555;
             font-size: 14px;
         }
+
+        /* --- STYLING KHUSUS POP-UP SWEETALERT2 TEMA LUMUTBLOG --- */
+        .swal-custom-popup {
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 16px !important;
+            padding: 25px !important;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+        }
+        .swal-custom-title {
+            color: #008000 !important;
+            font-weight: 800 !important;
+            font-size: 24px !important;
+        }
+        .swal-custom-confirm {
+            border-radius: 25px !important;
+            padding: 10px 30px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px !important;
+            box-shadow: 0 4px 10px rgba(47,160,132,0.3) !important;
+        }
+        .swal-custom-cancel {
+            border-radius: 25px !important;
+            padding: 10px 30px !important;
+            font-weight: 700 !important;
+            background-color: #f5f5f5 !important;
+            color: #555 !important;
+        }
     </style>
 </head>
 <body>
 <?php $this->beginBody() ?>
 
 <div class="wrap">
-    <?php
+<?php
     NavBar::begin([
-        'brandLabel' => '<span class="glyphicon glyphicon-leaf" style="color: #2FA084; margin-right: 8px; font-size: 1.1em;"></span><span style="color: #008000; font-weight: 800; font-size: 1.3em; letter-spacing: -0.5px;">LUMUT<span style="color: #2FA084;">BLOG</span></span>',
+        // Menggabungkan tag <img> untuk logo PNG dan <span> untuk teks teks LUMUTBLOG
+        'brandLabel' => '<img src="' . Yii::$app->request->baseUrl . '/images/logo.png" alt="Logo" style="height: 28px; margin-right: 10px;">' .
+                        '<span style="color: #008000; font-weight: 800; font-size: 1.3em; letter-spacing: -0.5px;">LUMUT<span style="color: #2FA084;">BLOG</span></span>',
         'brandUrl' => Yii::$app->homeUrl,
         'options' => [
             'class' => 'navbar-inverse navbar-fixed-top',
@@ -123,13 +146,12 @@ AppAsset::register($this);
     ];
     
     if (Yii::$app->user->isGuest) {
-        // STYLE INLINE ABSOLUT UNTUK MENCEGAH BENTROK CSS[cite: 6]
         $menuItems[] = [
             'label' => '<span class="glyphicon glyphicon-log-in" style="margin-right: 5px;"></span> Login', 
             'url' => ['/site/login'],
             'options' => ['class' => 'login-cta'],
             'linkOptions' => [
-                'style' => 'background-color: #2FA084 !important; color: #FFFFFF !important; border-radius: 25px !important; padding: 8px 22px !important; margin: 8px 5px !important; font-weight: 600 !important; font-size: 14px !important; display: inline-block !important; line-height: 1.5 !important;'
+                'style' => 'background-color: transparent !important; color: #2FA084 !important; border: 2px solid #2FA084 !important; border-radius: 25px !important; padding: 6px 20px !important; margin: 8px 5px !important; font-weight: 600 !important; font-size: 13px !important; display: inline-block !important; transition: all 0.3s ease;'
             ]
         ];
         $menuItems[] = [
@@ -137,7 +159,7 @@ AppAsset::register($this);
             'url' => ['/site/signup'],
             'options' => ['class' => 'signup-cta'],
             'linkOptions' => [
-                'style' => 'background-color: #008000 !important; color: #FFFFFF !important; border-radius: 25px !important; padding: 8px 22px !important; margin: 8px 5px !important; font-weight: 600 !important; font-size: 14px !important; display: inline-block !important; line-height: 1.5 !important;'
+                'style' => 'background-color: #2FA084 !important; color: #FFFFFF !important; border: 2px solid #2FA084 !important; border-radius: 25px !important; padding: 6px 20px !important; margin: 8px 5px !important; font-weight: 600 !important; font-size: 13px !important; display: inline-block !important; transition: all 0.3s ease;'
             ]
         ];
     } else {
@@ -154,6 +176,11 @@ AppAsset::register($this);
             $menuItems[] = [
                 'label' => '<span class="glyphicon glyphicon-bell" style="margin-right: 4px; color: #2FA084;"></span> Approval' . $badgeNotif, 
                 'url' => ['/post/approval']
+            ];
+            
+            $menuItems[] = [
+                'label' => '<span class="glyphicon glyphicon-trash" style="margin-right: 4px; color: #d9534f;"></span> Riwayat Hapus', 
+                'url' => ['/post/trash']
             ];
         }
 
@@ -194,19 +221,120 @@ AppAsset::register($this);
         <?= Breadcrumbs::widget([
             'links' => isset($this->params['breadcrumbs']) ? $this->params['breadcrumbs'] : [],
         ]) ?>
-        <?= Alert::widget() ?>
+        
+        <!-- ALERT STANDAR YII2 DIHAPUS, DIGANTI DENGAN SCRIPT SWEETALERT2 DI BAWAH -->
         <?= $content ?>
     </div>
 </div>
 
-<footer class="footer" style="background-color: #FFFFFF; border-top: 1px solid #eaeaea; padding: 25px 0; margin-top: 40px;">
+<footer class="footer" style="height: auto !important; min-height: 200px; flex-shrink: 0; background-color: #004d00 !important; color: #ffffff !important; padding: 50px 0 20px 0; margin-top: 60px; border-top: none;">
     <div class="container">
-        <p class="pull-left" style="color: #666; font-weight: 500;">&copy; LumutBlog By <?= Html::encode('Muhammad Faturahman') ?> <?= date('Y') ?></p>
-        <p class="pull-right" style="color: #aaa; font-size: 13px;">Powered by Yii2</p>
+        <div class="row" style="margin-bottom: 30px;">
+            <div class="col-md-4" style="margin-bottom: 20px;">
+                <h4 style="color: #2FA084; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; font-size: 16px;">Tentang LumutBlog</h4>
+                <p style="color: #cccccc; font-size: 14px; line-height: 1.6;">
+                    LumutBlog adalah platform publikasi artikel modern yang dirancang untuk memberikan pengalaman menulis dan membaca yang bersih, cepat, dan bernuansa alam.
+                </p>
+            </div>
+            
+            <div class="col-md-4" style="margin-bottom: 20px;">
+                <h4 style="color: #2FA084; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; font-size: 16px;">Kontak Kami</h4>
+                <ul style="list-style: none; padding: 0; color: #cccccc; font-size: 14px; line-height: 1.8;">
+                    <li><span class="glyphicon glyphicon-envelope" style="margin-right: 10px; color: #2FA084;"></span> info@lumutblog.com</li>
+                    <li><span class="glyphicon glyphicon-earphone" style="margin-right: 10px; color: #2FA084;"></span> +62 812 3456 7890</li>
+                </ul>
+            </div>
+            
+            <div class="col-md-4" style="margin-bottom: 20px;">
+                <h4 style="color: #2FA084; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; font-size: 16px;">Alamat</h4>
+                <ul style="list-style: none; padding: 0; color: #cccccc; font-size: 14px; line-height: 1.6;">
+                    <li><span class="glyphicon glyphicon-map-marker" style="margin-right: 10px; color: #2FA084;"></span> Diro RT 057, Pendowoharjo,</li>
+                    <li style="padding-left: 24px;">Sewon, Bantul,</li>
+                    <li style="padding-left: 24px;">Daerah Istimewa Yogyakarta, Indonesia</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; text-align: center; color: #999999; font-size: 13px;">
+            &copy; LumutBlog By <?= Html::encode('Muhammad Faturahman') ?> <?= date('Y') ?> &bull; Powered by Yii2
+        </div>
     </div>
 </footer>
 
 <?php $this->endBody() ?>
+
+<!-- ========================================== -->
+<!-- INTEGRASI SWEETALERT2 UNTUK POP UP & ALERT -->
+<!-- ========================================== -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // 1. OVERRIDE CONFIRMATION BOX BAWAAN YII2 (Untuk Tombol Hapus, Restore, dll)
+        if (typeof yii !== 'undefined') {
+            yii.confirm = function (message, okCallback, cancelCallback) {
+                // Deteksi apakah ini aksi destruktif (mengandung kata hapus/permanen) untuk mengubah warna tombol
+                var isDanger = message.toLowerCase().includes('hapus') || message.toLowerCase().includes('tolak');
+                
+                Swal.fire({
+                    title: 'Konfirmasi Tindakan',
+                    text: message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: isDanger ? '#d9534f' : '#2FA084', // Merah jika hapus, Hijau jika aman
+                    cancelButtonColor: '#e0e0e0',
+                    confirmButtonText: 'Ya, Lanjutkan',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true, // Tombol konfirmasi di kanan
+                    customClass: {
+                        popup: 'swal-custom-popup',
+                        title: 'swal-custom-title',
+                        confirmButton: 'swal-custom-confirm',
+                        cancelButton: 'swal-custom-cancel'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        okCallback();
+                    } else if (cancelCallback) {
+                        cancelCallback();
+                    }
+                });
+            };
+        }
+
+        // 2. MENGUBAH FLASH MESSAGES YII2 MENJADI POP UP CANTIK
+        <?php
+        $session = Yii::$app->session;
+        $flashes = $session->getAllFlashes();
+        $jsFlashes = '';
+        foreach ($flashes as $type => $data) {
+            $messages = (array) $data;
+            // Konversi tipe alert Yii ke tipe icon SweetAlert
+            $swalType = ($type === 'danger' || $type === 'error') ? 'error' : (($type === 'success') ? 'success' : 'info');
+            $title = ($swalType === 'error') ? 'Gagal!' : (($swalType === 'success') ? 'Berhasil!' : 'Informasi');
+            
+            foreach ($messages as $message) {
+                $msg = addslashes($message);
+                $jsFlashes .= "Swal.fire({ 
+                    title: '{$title}', 
+                    text: '{$msg}', 
+                    icon: '{$swalType}', 
+                    confirmButtonColor: '#2FA084', 
+                    confirmButtonText: 'Tutup',
+                    customClass: { 
+                        popup: 'swal-custom-popup', 
+                        title: 'swal-custom-title',
+                        confirmButton: 'swal-custom-confirm' 
+                    } 
+                });\n";
+            }
+            $session->removeFlash($type);
+        }
+        echo $jsFlashes;
+        ?>
+    });
+</script>
+
 </body>
 </html>
 <?php $this->endPage() ?>

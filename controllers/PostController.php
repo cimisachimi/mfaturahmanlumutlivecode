@@ -48,8 +48,8 @@ class PostController extends Controller
                         'roles' => ['?', '@'], 
                     ],
                     [
-                        // TAMBAHKAN 'report-comment' di sini agar user login bisa melaporkan komentar
-                        'actions' => ['index', 'create', 'update', 'delete', 'submit-review', 'approval', 'process-approval', 'delete-comment', 'report-comment'],
+                        // Tambahkan aksi trash, restore, dan force-delete di sini
+                        'actions' => ['index', 'create', 'update', 'delete', 'submit-review', 'approval', 'process-approval', 'delete-comment', 'report-comment', 'trash', 'restore', 'force-delete'],
                         'allow' => true,
                         'roles' => ['@'], 
                     ],
@@ -61,7 +61,9 @@ class PostController extends Controller
                     'delete' => ['POST'],
                     'process-approval' => ['POST'],
                     'delete-comment' => ['POST'],
-                    'report-comment' => ['POST'], // Pastikan method POST diizinkan jika menggunakan data-method post
+                    'report-comment' => ['POST'],
+                    'restore' => ['POST'],
+                    'force-delete' => ['POST'],
                 ],
             ],
         ];
@@ -73,7 +75,7 @@ class PostController extends Controller
      */
     public function actionIndex()
     {
-        $query = \app\models\Post::find();
+        $query = \app\models\Post::find()->where(['<>', 'status', 'deleted']); // Sembunyikan artikel berstatus deleted dari index utama
         $username = Yii::$app->user->identity->username;
 
         // Gunakan helper isAdminUser()
@@ -104,7 +106,7 @@ class PostController extends Controller
     public function actionView($id)
     {
         $model = Post::findOne($id);
-        if ($model === null) {
+        if ($model === null || strtolower($model->status) === 'deleted') {
             throw new NotFoundHttpException('Artikel tidak ditemukan.');
         }
 
@@ -168,6 +170,7 @@ class PostController extends Controller
             'commentModel' => $comment,
         ]);
     }
+
     /**
      * Creates a new Post model.
      * @return mixed
@@ -271,21 +274,86 @@ class PostController extends Controller
     }
 
     /**
-     * Deletes an existing Post model.
+     * Soft Deletes an existing Post model (Pindah ke Riwayat Hapus).
      * @param integer $id
      * @return mixed
      * @throws NotFoundHttpException if the model cannot be found
      */
     public function actionDelete($id)
     {
-        try {
-            $this->findModel($id)->delete();
-            Yii::$app->session->setFlash('success', 'Artikel berhasil dihapus!');
-        } catch (\Exception $e) {
-            Yii::$app->session->setFlash('error', 'Gagal menghapus artikel: ' . $e->getMessage());
+        $model = $this->findModel($id);
+        $username = Yii::$app->user->identity->username;
+        $isAdmin = $this->isAdminUser();
+
+        if ($isAdmin || $model->username === $username) {
+            $model->status = 'deleted'; // Soft delete
+            $model->save(false);
+            Yii::$app->session->setFlash('success', 'Artikel berhasil dipindahkan ke Riwayat Hapus.');
+        } else {
+            throw new \yii\web\ForbiddenHttpException('Anda tidak berhak menghapus artikel ini.');
         }
 
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Menampilkan daftar artikel di Riwayat Hapus (Khusus Admin).
+     */
+    public function actionTrash()
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Akses Ditolak. Hanya Admin yang dapat melihat Riwayat Hapus.');
+        }
+
+        $query = \app\models\Post::find()->where(['status' => 'deleted']);
+        $dataProvider = new \yii\data\ActiveDataProvider([
+            'query' => $query,
+            'sort' => [
+                'defaultOrder' => [
+                    'date' => SORT_DESC,
+                ]
+            ],
+        ]);
+
+        return $this->render('trash', [
+            'dataProvider' => $dataProvider,
+        ]);
+    }
+
+    /**
+     * Mengembalikan artikel dari Riwayat Hapus ke status Pending (Khusus Admin).
+     */
+    public function actionRestore($id)
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Akses ditolak.');
+        }
+
+        $model = $this->findModel($id);
+        $model->status = 'pending';
+        $model->save(false);
+        Yii::$app->session->setFlash('success', 'Artikel berhasil dikembalikan ke status Pending.');
+        return $this->redirect(['trash']);
+    }
+
+    /**
+     * Menghapus artikel secara permanen dari database (Khusus Admin).
+     */
+    public function actionForceDelete($id)
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Akses ditolak.');
+        }
+
+        $model = $this->findModel($id);
+        try {
+            $model->delete();
+            Yii::$app->session->setFlash('success', 'Artikel berhasil dihapus secara permanen.');
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Gagal menghapus permanen: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['trash']);
     }
 
     public function actionSubmitReview($id)
@@ -312,30 +380,30 @@ class PostController extends Controller
     }
 
     public function actionApproval()
-{
-    if (!$this->isAdminUser()) {
-        throw new \yii\web\ForbiddenHttpException('Anda tidak memiliki hak akses ke halaman Approval.');
+    {
+        if (!$this->isAdminUser()) {
+            throw new \yii\web\ForbiddenHttpException('Anda tidak memiliki hak akses ke halaman Approval.');
+        }
+
+        // Query untuk Post yang pending
+        $postQuery = \app\models\Post::find()->where(['status' => 'pending'])->orderBy(['submitted_at' => SORT_DESC]);
+        $postDataProvider = new \yii\data\ActiveDataProvider([
+            'query' => $postQuery,
+            'pagination' => ['pageSize' => 10],
+        ]);
+
+        // Query khusus untuk Komentar yang dilaporkan (is_reported = true)
+        $commentQuery = \app\models\Comment::find()->where(['is_reported' => true])->orderBy(['created_at' => SORT_DESC]);
+        $commentDataProvider = new \yii\data\ActiveDataProvider([
+            'query' => $commentQuery,
+            'pagination' => ['pageSize' => 10],
+        ]);
+
+        return $this->render('approval', [
+            'dataProvider' => $postDataProvider,
+            'commentDataProvider' => $commentDataProvider,
+        ]);
     }
-
-    // Query untuk Post yang pending
-    $postQuery = \app\models\Post::find()->where(['status' => 'pending'])->orderBy(['submitted_at' => SORT_DESC]);
-    $postDataProvider = new \yii\data\ActiveDataProvider([
-        'query' => $postQuery,
-        'pagination' => ['pageSize' => 10],
-    ]);
-
-    // Query khusus untuk Komentar yang dilaporkan (is_reported = true)
-    $commentQuery = \app\models\Comment::find()->where(['is_reported' => true])->orderBy(['created_at' => SORT_DESC]);
-    $commentDataProvider = new \yii\data\ActiveDataProvider([
-        'query' => $commentQuery,
-        'pagination' => ['pageSize' => 10],
-    ]);
-
-    return $this->render('approval', [
-        'dataProvider' => $postDataProvider,
-        'commentDataProvider' => $commentDataProvider, // Kirim ke view approval
-    ]);
-}
 
     public function actionProcessApproval($id)
     {
@@ -363,6 +431,7 @@ class PostController extends Controller
 
         return $this->redirect(['approval']);
     }
+
     public function actionDeleteComment($id)
     {
         $comment = \app\models\Comment::findOne($id);
@@ -384,6 +453,7 @@ class PostController extends Controller
 
         throw new \yii\web\ForbiddenHttpException('Anda tidak berhak menghapus komentar ini.');
     }
+
     public function actionReportComment($id)
     {
         $comment = \app\models\Comment::findOne($id);
@@ -397,7 +467,6 @@ class PostController extends Controller
         Yii::$app->session->setFlash('success', 'Komentar berhasil dilaporkan ke Admin.');
         return $this->redirect(['post/view', 'id' => $comment->post_id]);
     }
-    
 
     /**
      * Finds the Post model based on its primary key value.

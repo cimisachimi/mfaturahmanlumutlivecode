@@ -27,15 +27,15 @@ $this->params['breadcrumbs'][] = 'Edit';
                 
                 <div class="row" style="font-size: 13px; color: #555;">
                     <div class="col-sm-4" style="margin-bottom: 6px;">
-                        <strong>🕒 Disubmit:</strong> 
+                        <strong>Disubmit:</strong> 
                         <span style="color: #333;"><?= !empty($model->submitted_at) ? date('d M Y, H:i', strtotime($model->submitted_at)) : 'Belum' ?></span>
                     </div>
                     <div class="col-sm-4" style="margin-bottom: 6px;">
-                        <strong>👁️ Direview:</strong> 
+                        <strong>Direview:</strong> 
                         <span style="color: #333;"><?= !empty($model->reviewed_at) ? date('d M Y, H:i', strtotime($model->reviewed_at)) : 'Belum' ?></span>
                     </div>
                     <div class="col-sm-4" style="margin-bottom: 6px;">
-                        <strong>🔄 Siklus Revisi:</strong> 
+                        <strong>Siklus Revisi:</strong> 
                         <span class="label" style="background-color: #2FA084; font-size: 11px;">Revisi ke-<?= (int)$model->revision_count ?></span>
                     </div>
                 </div>

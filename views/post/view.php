@@ -35,17 +35,17 @@ if ($isGuest) {
                     
                     <div class="row" style="font-size: 13px; color: #555;">
                         <div class="col-sm-4" style="margin-bottom: 8px;">
-                            <strong>🕒 Disubmit Pada:</strong><br>
+                            <strong>Disubmit Pada:</strong><br>
                             <span style="color: #333;"><?= !empty($model->submitted_at) ? date('d M Y, H:i', strtotime($model->submitted_at)) : '<span class="text-muted">Belum disubmit</span>' ?></span>
                         </div>
                         
                         <div class="col-sm-4" style="margin-bottom: 8px;">
-                            <strong>👁️ Direview Pada:</strong><br>
+                            <strong>Direview Pada:</strong><br>
                             <span style="color: #333;"><?= !empty($model->reviewed_at) ? date('d M Y, H:i', strtotime($model->reviewed_at)) : '<span class="text-muted">Menunggu review</span>' ?></span>
                         </div>
 
                         <div class="col-sm-4" style="margin-bottom: 8px;">
-                            <strong>🔄 Siklus Revisi:</strong><br>
+                            <strong>Siklus Revisi:</strong><br>
                             <span class="label" style="background-color: #2FA084; font-size: 12px; padding: 3px 8px;">Revisi ke-<?= (int)$model->revision_count ?></span>
                         </div>
                     </div>
@@ -53,8 +53,8 @@ if ($isGuest) {
             </div>
         <?php endif; ?>
 
-        <!-- Status Badge (Hanya tampil jika user sudah login / BUKAN guest) -->
-        <?php if (!$isGuest): ?>
+        <!-- Status Badge (Hanya tampil HANYA JIKA USER ADALAH ADMIN. Author tidak akan melihat ini) -->
+        <?php if ($isAdmin): ?>
             <div style="margin-bottom: 15px;">
                 <?php 
                     $status = strtolower($model->status);

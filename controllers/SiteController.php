@@ -71,6 +71,7 @@ class SiteController extends Controller
                 'posts' => $posts,
             ]);
         }
+    
 
 
     public function actionMobile(){
@@ -182,4 +183,5 @@ class SiteController extends Controller
             'model' => $model,
         ]);
     }
+    
 }
