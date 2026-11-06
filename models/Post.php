@@ -17,6 +17,7 @@ use Yii;
  */
 class Post extends \yii\db\ActiveRecord
 {
+    public $imageFile;
     /**
      * @inheritdoc
      */
@@ -37,7 +38,11 @@ class Post extends \yii\db\ActiveRecord
             [['username'], 'string', 'max' => 45],
             [['username'], 'exist', 'skipOnError' => true, 'targetClass' => Account::className(), 'targetAttribute' => ['username' => 'username']],
             [['status'], 'string', 'max' => 20],
-            [['status'], 'in', 'range' => ['draft', 'pending', 'approved', 'reject']]
+            [['status'], 'in', 'range' => ['draft', 'pending', 'approved', 'reject']],
+            [['thumbnail'], 'string', 'max' => 255],
+            [['imageFile'], 'file', 'skipOnEmpty' => true, 'extensions' => 'png, jpg, jpeg'],
+            
+
         ];
     }
 

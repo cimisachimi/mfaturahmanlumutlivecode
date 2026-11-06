@@ -60,10 +60,17 @@ class SiteController extends Controller
      * @return string
      */
     public function actionIndex()
-    {
-	$data = \app\models\Post::find()->orderBy('date DESC')->all();
-        return $this->render('index', ['data' => $data]);
-    }
+        {
+            // Mengambil artikel yang berstatus 'approved', diurutkan dari yang terbaru
+            $posts = \app\models\Post::find()
+                ->where(['status' => 'approved'])
+                ->orderBy(['date' => SORT_DESC])
+                ->all();
+
+            return $this->render('index', [
+                'posts' => $posts,
+            ]);
+        }
 
 
 public function actionMobile(){

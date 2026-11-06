@@ -9,6 +9,7 @@ use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use yii\web\UploadedFile;
 
 /**
  * PostController implements the CRUD actions for Post model.
@@ -75,49 +76,54 @@ class PostController extends Controller
      * @return mixed
      */
     public function actionCreate()
-{
-    $model = new Post();
+    {
+        $model = new Post();
 
-    if ($model->load(Yii::$app->request->post())) {
-        // Jika berhasil disimpan
-        if ($model->save()) {
-            Yii::$app->session->setFlash('success', 'Artikel berhasil dibuat!');
-            return $this->redirect(['view', 'id' => $model->id]);
-        } else {
-            // Jika gagal disimpan (misal: validasi gagal atau error database)
-            Yii::$app->session->setFlash('error', 'Gagal membuat artikel. Silakan periksa kembali isian Anda.');
+        if ($model->load(Yii::$app->request->post())) {
+            
+            // Logika Upload Thumbnail
+            $model->imageFile = UploadedFile::getInstance($model, 'imageFile');
+            if ($model->imageFile) {
+                // Buat nama file unik
+                $filename = time() . '_' . $model->imageFile->baseName . '.' . $model->imageFile->extension;
+                // Simpan ke folder web/uploads
+                $model->imageFile->saveAs('uploads/' . $filename);
+                $model->thumbnail = $filename;
+            }
+
+            if ($model->save(false)) { // false agar validasi imageFile tidak memblokir simpan
+                Yii::$app->session->setFlash('success', 'Artikel berhasil dibuat!');
+                return $this->redirect(['index']);
+            }
         }
+
+        return $this->render('create', ['model' => $model]);
     }
 
-    return $this->render('create', [
-        'model' => $model,
-    ]);
-}
-
-    /**
-     * Updates an existing Post model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
     public function actionUpdate($id)
-{
-    $model = $this->findModel($id);
+    {
+        $model = $this->findModel($id);
+        $oldThumbnail = $model->thumbnail; // Simpan nama file lama
 
-    if ($model->load(Yii::$app->request->post())) {
-        if ($model->save()) {
-            Yii::$app->session->setFlash('success', 'Artikel berhasil diperbarui!');
-            return $this->redirect(['view', 'id' => $model->id]);
-        } else {
-            Yii::$app->session->setFlash('error', 'Gagal memperbarui artikel.');
+        if ($model->load(Yii::$app->request->post())) {
+            
+            $model->imageFile = UploadedFile::getInstance($model, 'imageFile');
+            if ($model->imageFile) {
+                $filename = time() . '_' . $model->imageFile->baseName . '.' . $model->imageFile->extension;
+                $model->imageFile->saveAs('uploads/' . $filename);
+                $model->thumbnail = $filename;
+            } else {
+                $model->thumbnail = $oldThumbnail; // Gunakan yang lama jika tidak ada upload baru
+            }
+
+            if ($model->save(false)) {
+                Yii::$app->session->setFlash('success', 'Artikel berhasil diperbarui!');
+                return $this->redirect(['index']);
+            }
         }
-    }
 
-    return $this->render('update', [
-        'model' => $model,
-    ]);
-}
+        return $this->render('update', ['model' => $model]);
+    }
     /**
      * Deletes an existing Post model.
      * If deletion is successful, the browser will be redirected to the 'index' page.
