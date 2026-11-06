@@ -10,7 +10,7 @@ body {
     padding: 0 0 60px;
 }
 
-.wrap > .container {
+.wrap>.container {
     padding: 70px 15px 20px;
 }
 
@@ -37,7 +37,8 @@ body {
 }
 
 /* add sorting icons to gridview sort links */
-a.asc:after, a.desc:after {
+a.asc:after,
+a.desc:after {
     position: relative;
     top: 1px;
     display: inline-block;
@@ -49,11 +50,15 @@ a.asc:after, a.desc:after {
 }
 
 a.asc:after {
-    content: /*"\e113"*/ "\e151";
+    content:
+        /*"\e113"*/
+        "\e151";
 }
 
 a.desc:after {
-    content: /*"\e114"*/ "\e152";
+    content:
+        /*"\e114"*/
+        "\e152";
 }
 
 .sort-numerical a.asc:after {
@@ -91,25 +96,103 @@ a.desc:after {
 }
 
 /* align the logout "link" (button in form) of the navbar */
-.nav li > form > button.logout {
+.nav li>form>button.logout {
     padding: 15px;
     border: none;
 }
 
 @media(max-width:767px) {
-    .nav li > form > button.logout {
-        display:block;
+    .nav li>form>button.logout {
+        display: block;
         text-align: left;
         width: 100%;
         padding: 10px 15px;
     }
 }
 
-.nav > li > form > button.logout:focus,
-.nav > li > form > button.logout:hover {
+.nav>li>form>button.logout:focus,
+.nav>li>form>button.logout:hover {
     text-decoration: none;
 }
 
-.nav > li > form > button.logout:focus {
+.nav>li>form>button.logout:focus {
     outline: none;
+}
+
+/* =========================================
+   CUSTOM BOOTSTRAP THEME OVERRIDES
+   ========================================= */
+
+/* 1. Main Background & Lighter Medium Size Background (White) */
+body,
+.wrap>.container,
+.jumbotron,
+.well,
+.panel,
+.navbar-inverse {
+    background-color: #FFFFFF !important;
+}
+
+/* 2. Small Objects: Teks, Link, dan Menu Navbar (Darkest Color: #008000) */
+a,
+.text-primary,
+.text-success,
+.navbar-inverse .navbar-brand,
+.navbar-inverse .navbar-nav>li>a {
+    color: #008000 !important;
+    transition: all 0.3s ease;
+}
+
+a:hover,
+.navbar-inverse .navbar-brand:hover,
+.navbar-inverse .navbar-nav>li>a:hover {
+    color: #2FA084 !important;
+    text-decoration: none;
+}
+
+/* 3. Buttons and Stuff (#2FA084) */
+.btn-primary,
+.btn-success,
+.btn-info,
+.btn-default,
+.label-primary,
+.label-success,
+.pagination>.active>a,
+.pagination>.active>span {
+    background-color: #2FA084 !important;
+    border-color: #2FA084 !important;
+    color: #FFFFFF !important;
+    transition: all 0.3s ease;
+}
+
+/* Efek hover untuk tombol (sedikit lebih gelap) */
+.btn-primary:hover,
+.btn-success:hover,
+.btn-info:hover,
+.btn-default:hover {
+    background-color: #248169 !important;
+    border-color: #248169 !important;
+    color: #FFFFFF !important;
+}
+
+/* Penyesuaian Border Navbar dan Tombol Mobile */
+.navbar-inverse {
+    border-bottom: 2px solid #2FA084 !important;
+    border-color: #FFFFFF;
+}
+
+.navbar-inverse .navbar-toggle {
+    border-color: #2FA084 !important;
+}
+
+.navbar-inverse .navbar-toggle .icon-bar {
+    background-color: #2FA084 !important;
+}
+
+.navbar-inverse .navbar-nav>.active>a,
+.navbar-inverse .navbar-nav>.active>a:hover,
+.navbar-inverse .navbar-nav>.active>a:focus {
+    background-color: #FFFFFF !important;
+    color: #2FA084 !important;
+    border-bottom: 2px solid #2FA084;
 }

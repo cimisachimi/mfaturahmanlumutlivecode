@@ -36,6 +36,8 @@ class Post extends \yii\db\ActiveRecord
             [['date'], 'safe'],
             [['username'], 'string', 'max' => 45],
             [['username'], 'exist', 'skipOnError' => true, 'targetClass' => Account::className(), 'targetAttribute' => ['username' => 'username']],
+            [['status'], 'string', 'max' => 20],
+            [['status'], 'in', 'range' => ['draft', 'pending', 'approved', 'reject']]
         ];
     }
 
@@ -59,5 +61,15 @@ class Post extends \yii\db\ActiveRecord
     public function getUsername0()
     {
         return $this->hasOne(Account::className(), ['username' => 'username']);
+    }
+
+    public static function getStatusList()
+    {
+        return [
+            'draft' => 'Draft',
+            'pending' => 'Pending',
+            'approved' => 'Approved',
+            'reject' => 'Reject'
+        ];
     }
 }

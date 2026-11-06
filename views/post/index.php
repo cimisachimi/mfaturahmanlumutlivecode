@@ -26,6 +26,28 @@ $this->params['breadcrumbs'][] = $this->title;
             'content:html',
             'date',
             'username',
+            
+            // Kolom Status dengan Badge Warna
+            [
+                'attribute' => 'status',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    $colors = [
+                        'draft' => 'default',   // Abu-abu
+                        'pending' => 'info',    // Biru Muda
+                        'approved' => 'success',// Hijau (Sesuai tema Anda)
+                        'reject' => 'danger',   // Merah
+                    ];
+                    
+                    // Ambil warna berdasarkan status, jika tidak ada fallback ke default
+                    $color = isset($colors[$model->status]) ? $colors[$model->status] : 'default';
+                    
+                    // Huruf kapital di awal kata
+                    $label = ucfirst($model->status);
+                    
+                    return "<span class=\"label label-{$color}\">{$label}</span>";
+                },
+            ],
 
             ['class' => 'yii\grid\ActionColumn'],
         ],

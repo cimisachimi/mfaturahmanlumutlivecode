@@ -20,6 +20,11 @@ use dosamigos\ckeditor\CKEditor;
             ]) ?>
 
 
+    <?= $form->field($model, 'status')->dropDownList(
+    \app\models\Post::getStatusList(), 
+    ['prompt' => 'Pilih Status Artikel...']
+    ) ?>
+    
     <div class="form-group">
         <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
     </div>

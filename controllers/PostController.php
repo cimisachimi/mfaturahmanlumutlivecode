@@ -75,21 +75,24 @@ class PostController extends Controller
      * @return mixed
      */
     public function actionCreate()
-    {
-        $model = new Post();
+{
+    $model = new Post();
 
-        if ($model->load(Yii::$app->request->post())) {
-		$model->date = date('Y-m-d H:i:s');
-		$model->username = \Yii::$app->user->identity->username;
-		if($model->save()){
-            return $this->redirect(['view', 'id' => $model->idpost]);
-		}
+    if ($model->load(Yii::$app->request->post())) {
+        // Jika berhasil disimpan
+        if ($model->save()) {
+            Yii::$app->session->setFlash('success', 'Artikel berhasil dibuat!');
+            return $this->redirect(['view', 'id' => $model->id]);
+        } else {
+            // Jika gagal disimpan (misal: validasi gagal atau error database)
+            Yii::$app->session->setFlash('error', 'Gagal membuat artikel. Silakan periksa kembali isian Anda.');
         }
-
-        return $this->render('create', [
-            'model' => $model,
-        ]);
     }
+
+    return $this->render('create', [
+        'model' => $model,
+    ]);
+}
 
     /**
      * Updates an existing Post model.
@@ -99,22 +102,22 @@ class PostController extends Controller
      * @throws NotFoundHttpException if the model cannot be found
      */
     public function actionUpdate($id)
-    {
-        $model = $this->findModel($id);
+{
+    $model = $this->findModel($id);
 
-        if ($model->load(Yii::$app->request->post()) && $id > 2) {
-		$model->date = date('Y-m-d H:i:s');
-                $model->username = \Yii::$app->user->identity->username;
-                if($model->save()){
-            return $this->redirect(['view', 'id' => $model->idpost]);
-		}
+    if ($model->load(Yii::$app->request->post())) {
+        if ($model->save()) {
+            Yii::$app->session->setFlash('success', 'Artikel berhasil diperbarui!');
+            return $this->redirect(['view', 'id' => $model->id]);
+        } else {
+            Yii::$app->session->setFlash('error', 'Gagal memperbarui artikel.');
         }
-
-        return $this->render('update', [
-            'model' => $model,
-        ]);
     }
 
+    return $this->render('update', [
+        'model' => $model,
+    ]);
+}
     /**
      * Deletes an existing Post model.
      * If deletion is successful, the browser will be redirected to the 'index' page.
@@ -124,9 +127,13 @@ class PostController extends Controller
      */
     public function actionDelete($id)
     {
-	if($id > 2){
-        	$this->findModel($id)->delete();
-	}
+        try {
+            $this->findModel($id)->delete();
+            Yii::$app->session->setFlash('success', 'Artikel berhasil dihapus!');
+        } catch (\Exception $e) {
+            // Tangkap error jika artikel tidak bisa dihapus (misal: berelasi dengan data lain)
+            Yii::$app->session->setFlash('error', 'Gagal menghapus artikel: ' . $e->getMessage());
+        }
 
         return $this->redirect(['index']);
     }
