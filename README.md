@@ -25,18 +25,17 @@ Anda bisa mendaftar akun baru langsung di web, atau menggunakan akun pengujian b
 
 1. Admin (Akses penuh untuk approval, riwayat hapus, dan moderasi)
 
-Username: admin
+Username: ADM001
 
 Password: admin123
 
 2. Author (Akses untuk menulis artikel dan mengirim draf ke admin)
 
-Username: author
+Username: fatur1
 
-Password: author123
+Password: fatur1
 
 Kontak
-
 Muhammad Faturahman
 mfaturrahmann@gmail.com
-Kandidat Maganghub Lumut.id
+Kandidat Maganghub di Lumut Karya Sejahtera
