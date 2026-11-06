@@ -95,4 +95,8 @@ class Post extends \yii\db\ActiveRecord
             'reject' => 'Reject (Tolak)',
         ];
     }
+    public function getComments()
+    {
+        return $this->hasMany(Comment::className(), ['post_id' => 'idpost']);
+    }
 }

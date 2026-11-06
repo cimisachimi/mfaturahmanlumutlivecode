@@ -5,8 +5,9 @@ use yii\grid\GridView;
 
 /* @var $this yii\web\View */
 /* @var $dataProvider yii\data\ActiveDataProvider */
+/* @var $commentDataProvider yii\data\ActiveDataProvider */
 
-$this->title = 'Request Approval Artikel';
+$this->title = 'Request Approval & Moderasi';
 $this->params['breadcrumbs'][] = $this->title;
 
 // Fungsi helper kecil untuk menghitung durasi waktu berlalu (Time Ago)
@@ -32,6 +33,7 @@ function timeAgo($datetime) {
 ?>
 <div class="post-approval" style="max-width: 1000px; margin: 0 auto;">
 
+    <!-- 1. BAGIAN REQUEST APPROVAL ARTIKEL -->
     <div style="margin-bottom: 25px;">
         <h1 style="color: #008000; font-weight: 800; margin: 0;"><?= Html::encode($this->title) ?></h1>
         <p style="color: #666; margin-top: 5px;">Daftar artikel dari Author yang menunggu peninjauan, persetujuan, atau revisi.</p>
@@ -89,5 +91,53 @@ function timeAgo($datetime) {
             ],
         ],
     ]); ?>
+
+
+    <!-- 2. BAGIAN MODERASI KOMENTAR YANG DILAPORKAN (REPORTED COMMENTS) -->
+    <?php if (isset($commentDataProvider)): ?>
+        <div style="margin-top: 50px; margin-bottom: 40px;">
+            <div style="margin-bottom: 20px;">
+                <h2 style="color: #d9534f; font-weight: 800; margin: 0;">
+                    <span class="glyphicon glyphicon-flag" style="margin-right: 5px;"></span> Komentar yang Dilanggar / Dilaporkan
+                </h2>
+                <p style="color: #666; margin-top: 5px;">Daftar komentar dari pengguna yang dilaporkan karena melanggar aturan dan memerlukan tindakan moderasi admin.</p>
+            </div>
+
+            <?= GridView::widget([
+                'dataProvider' => $commentDataProvider,
+                'tableOptions' => ['class' => 'table', 'style' => 'background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);'],
+                'summary' => '<div style="margin-bottom: 15px; color: #666; font-size: 13px;">Menampilkan <b>{begin}-{end}</b> dari total <b>{totalCount}</b> komentar dilaporkan.</div>',
+                'columns' => [
+                    ['class' => 'yii\grid\SerialColumn'],
+
+                    [
+                        'attribute' => 'content',
+                        'label' => 'Isi Komentar & Pelapor',
+                        'format' => 'raw',
+                        'value' => function($model) {
+                            $commentText = '<div style="font-size: 14px; color: #333; margin-bottom: 5px;">"' . nl2br(Html::encode($model->content)) . '"</div>';
+                            $meta = '<small style="color: #777;">Penulis Komentar: <strong style="color: #2FA084;">' . Html::encode($model->username) . '</strong> &bull; Pada Artikel: ' . Html::a(Html::encode($model->post->title ?? 'Artikel'), ['post/view', 'id' => $model->post_id], ['target' => '_blank']) . '</small>';
+                            return $commentText . $meta;
+                        }
+                    ],
+                    [
+                        'label' => 'Aksi Moderasi Admin',
+                        'format' => 'raw',
+                        'contentOptions' => ['style' => 'width: 180px; text-align: center; vertical-align: middle;'],
+                        'value' => function($model) {
+                            // Tombol Hapus Komentar yang melanggar
+                            $deleteBtn = Html::a('<span class="glyphicon glyphicon-trash"></span> Hapus Komentar', ['post/delete-comment', 'id' => $model->id], [
+                                'class' => 'btn btn-danger btn-sm',
+                                'style' => 'font-weight: bold; width: 100%;',
+                                'data-confirm' => 'Yakin ingin menghapus komentar yang melanggar ini?',
+                                'data-method' => 'post',
+                            ]);
+                            return $deleteBtn;
+                        }
+                    ],
+                ],
+            ]); ?>
+        </div>
+    <?php endif; ?>
 
 </div>

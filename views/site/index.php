@@ -31,8 +31,8 @@ $this->title = 'LumutBlog - Beranda';
 
         <div class="row">
             <?php 
-            // Ambil hanya artikel yang sudah approved untuk halaman utama publik
-            $posts = \app\models\Post::find()->where(['status' => 'approved'])->orderBy(['date' => SORT_DESC])->all();
+            // Ambil hanya artikel yang sudah approved, diurutkan berdasarkan tanggal review/approval terbaru
+            $posts = \app\models\Post::find()->where(['status' => 'approved'])->orderBy(['reviewed_at' => SORT_DESC])->all();
             
             if (empty($posts)): 
             ?>
@@ -46,23 +46,34 @@ $this->title = 'LumutBlog - Beranda';
                     <div class="col-lg-4 col-md-6" style="margin-bottom: 30px;">
                         <div class="panel panel-default" style="border: none; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); overflow: hidden; transition: transform 0.3s ease; height: 100%;">
                             
-                            <!-- Thumbnail Card -->
+                            <!-- Thumbnail Card (Kini bisa diklik menuju view artikel) -->
                             <?php if (!empty($post->thumbnail)): ?>
                                 <div style="height: 200px; overflow: hidden; background: #eee;">
-                                    <img src="<?= Yii::$app->request->baseUrl . '/uploads/' . Html::encode($post->thumbnail) ?>" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <?= Html::a(
+                                        '<img src="' . Yii::$app->request->baseUrl . '/uploads/' . Html::encode($post->thumbnail) . '" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;">',
+                                        ['post/view', 'id' => $post->idpost],
+                                        ['style' => 'display: block; height: 100%;']
+                                    ) ?>
                                 </div>
                             <?php else: ?>
                                 <div style="height: 100px; background: linear-gradient(45deg, #008000, #2FA084); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                                    LumutBlog Article
+                                    <?= Html::a(Html::encode('LumutBlog Article'), ['post/view', 'id' => $post->idpost], ['style' => 'color: white; text-decoration: none; display: block; width: 100%; height: 100%; text-align: center; line-height: 100px;']) ?>
                                 </div>
                             <?php endif; ?>
 
                             <div class="panel-body" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                                 <div>
-                                    <span style="color: #2FA084; font-size: 12px; font-weight: bold; text-transform: uppercase;"><?= date('d M Y', strtotime($post->date)) ?></span>
+                                    <?php 
+                                        // Gunakan tanggal approved (reviewed_at) jika ada, jika tidak fallback ke tanggal buat (date)
+                                        $publishDate = !empty($post->reviewed_at) ? $post->reviewed_at : $post->date;
+                                    ?>
+                                    <span style="color: #2FA084; font-size: 12px; font-weight: bold; text-transform: uppercase;"><?= date('d M Y', strtotime($publishDate)) ?></span>
+                                    
+                                    <!-- Judul Artikel (Bisa diklik) -->
                                     <h3 style="color: #008000; font-weight: 700; font-size: 18px; margin-top: 8px; margin-bottom: 12px; line-height: 1.4;">
                                         <?= Html::a(Html::encode($post->title), ['post/view', 'id' => $post->idpost], ['style' => 'color: #008000; text-decoration: none;']) ?>
                                     </h3>
+                                    
                                     <p style="color: #666; font-size: 14px; line-height: 1.6;">
                                         <?= \yii\helpers\StringHelper::truncate(strip_tags($post->content), 100, '...') ?>
                                     </p>

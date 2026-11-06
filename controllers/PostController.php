@@ -42,7 +42,14 @@ class PostController extends Controller
                 'class' => \yii\filters\AccessControl::className(),
                 'rules' => [
                     [
-                        'actions' => ['index', 'view', 'create', 'update', 'delete', 'submit-review', 'approval', 'process-approval'],
+                        // Aksi yang boleh dilihat oleh guest (belum login) dan user login
+                        'actions' => ['view'],
+                        'allow' => true,
+                        'roles' => ['?', '@'], 
+                    ],
+                    [
+                        // TAMBAHKAN 'report-comment' di sini agar user login bisa melaporkan komentar
+                        'actions' => ['index', 'create', 'update', 'delete', 'submit-review', 'approval', 'process-approval', 'delete-comment', 'report-comment'],
                         'allow' => true,
                         'roles' => ['@'], 
                     ],
@@ -53,6 +60,8 @@ class PostController extends Controller
                 'actions' => [
                     'delete' => ['POST'],
                     'process-approval' => ['POST'],
+                    'delete-comment' => ['POST'],
+                    'report-comment' => ['POST'], // Pastikan method POST diizinkan jika menggunakan data-method post
                 ],
             ],
         ];
@@ -94,13 +103,31 @@ class PostController extends Controller
      */
     public function actionView($id)
     {
-        $model = $this->findModel($id);
+        $model = Post::findOne($id);
+        if ($model === null) {
+            throw new NotFoundHttpException('Artikel tidak ditemukan.');
+        }
+
+        $isGuest = Yii::$app->user->isGuest;
+        $username = !$isGuest ? Yii::$app->user->identity->username : null;
         $isAdmin = $this->isAdminUser();
 
-        // Jika Admin mengirimkan keputusan review langsung dari halaman view
-        if ($isAdmin && Yii::$app->request->isPost) {
-            $action = Yii::$app->request->post('action'); // 'approve' atau 'reject'
-            $note = Yii::$app->request->post('admin_note'); // Alasan revisi
+        // 1. Jika pembaca adalah Guest (belum login), hanya boleh melihat artikel yang sudah Approved
+        if ($isGuest) {
+            if (strtolower($model->status) !== 'approved') {
+                throw new NotFoundHttpException('Artikel tidak ditemukan atau belum dipublikasikan.');
+            }
+        } else {
+            // 2. Jika sudah login, admin boleh lihat semua. Author hanya boleh lihat miliknya atau yang sudah approved
+            if (!$isAdmin && $model->username !== $username && strtolower($model->status) !== 'approved') {
+                throw new \yii\web\ForbiddenHttpException('Anda tidak berhak mengakses artikel ini.');
+            }
+        }
+
+        // Tangani proses Review Admin langsung dari halaman view (jika admin)
+        if ($isAdmin && Yii::$app->request->isPost && Yii::$app->request->post('action')) {
+            $action = Yii::$app->request->post('action');
+            $note = Yii::$app->request->post('admin_note');
 
             if ($action === 'approve') {
                 $model->status = 'approved';
@@ -115,12 +142,30 @@ class PostController extends Controller
                 $model->save(false);
                 Yii::$app->session->setFlash('success', 'Artikel ditolak dan catatan revisi dikirim ke author.');
             }
+            return $this->refresh();
+        }
 
-            return $this->refresh(); // Refresh halaman untuk melihat perubahan status
+        // Tangani Kirim Komentar Baru
+        $comment = new \app\models\Comment();
+        if ($comment->load(Yii::$app->request->post())) {
+            if ($isGuest) {
+                Yii::$app->session->setFlash('error', 'Anda harus login terlebih dahulu untuk memberikan komentar.');
+                return $this->refresh();
+            }
+
+            $comment->post_id = $model->idpost;
+            $comment->username = $username;
+            $comment->created_at = date('Y-m-d H:i:s');
+
+            if ($comment->save()) {
+                Yii::$app->session->setFlash('success', 'Komentar berhasil dikirim.');
+                return $this->refresh();
+            }
         }
 
         return $this->render('view', [
             'model' => $model,
+            'commentModel' => $comment,
         ]);
     }
     /**
@@ -267,24 +312,30 @@ class PostController extends Controller
     }
 
     public function actionApproval()
-    {
-        if (!$this->isAdminUser()) {
-            throw new \yii\web\ForbiddenHttpException('Anda tidak memiliki hak akses ke halaman Approval.');
-        }
-
-        $query = \app\models\Post::find()->where(['status' => 'pending'])->orderBy(['submitted_at' => SORT_DESC]);
-        
-        $dataProvider = new \yii\data\ActiveDataProvider([
-            'query' => $query,
-            'pagination' => [
-                'pageSize' => 10,
-            ],
-        ]);
-
-        return $this->render('approval', [
-            'dataProvider' => $dataProvider,
-        ]);
+{
+    if (!$this->isAdminUser()) {
+        throw new \yii\web\ForbiddenHttpException('Anda tidak memiliki hak akses ke halaman Approval.');
     }
+
+    // Query untuk Post yang pending
+    $postQuery = \app\models\Post::find()->where(['status' => 'pending'])->orderBy(['submitted_at' => SORT_DESC]);
+    $postDataProvider = new \yii\data\ActiveDataProvider([
+        'query' => $postQuery,
+        'pagination' => ['pageSize' => 10],
+    ]);
+
+    // Query khusus untuk Komentar yang dilaporkan (is_reported = true)
+    $commentQuery = \app\models\Comment::find()->where(['is_reported' => true])->orderBy(['created_at' => SORT_DESC]);
+    $commentDataProvider = new \yii\data\ActiveDataProvider([
+        'query' => $commentQuery,
+        'pagination' => ['pageSize' => 10],
+    ]);
+
+    return $this->render('approval', [
+        'dataProvider' => $postDataProvider,
+        'commentDataProvider' => $commentDataProvider, // Kirim ke view approval
+    ]);
+}
 
     public function actionProcessApproval($id)
     {
@@ -312,6 +363,41 @@ class PostController extends Controller
 
         return $this->redirect(['approval']);
     }
+    public function actionDeleteComment($id)
+    {
+        $comment = \app\models\Comment::findOne($id);
+        if (!$comment) {
+            throw new \yii\web\NotFoundHttpException('Komentar tidak ditemukan.');
+        }
+
+        $post = $comment->post;
+        $username = Yii::$app->user->identity->username;
+        $isAdmin = $this->isAdminUser();
+
+        // Hak hapus: Admin, Pemilik Artikel (Author), atau Pemilik Komentar itu sendiri
+        if ($isAdmin || $post->username === $username || $comment->username === $username) {
+            $postId = $comment->post_id;
+            $comment->delete();
+            Yii::$app->session->setFlash('success', 'Komentar berhasil dihapus.');
+            return $this->redirect(['view', 'id' => $postId]);
+        }
+
+        throw new \yii\web\ForbiddenHttpException('Anda tidak berhak menghapus komentar ini.');
+    }
+    public function actionReportComment($id)
+    {
+        $comment = \app\models\Comment::findOne($id);
+        if (!$comment) {
+            throw new \yii\web\NotFoundHttpException('Komentar tidak ditemukan.');
+        }
+
+        $comment->is_reported = true;
+        $comment->save(false);
+
+        Yii::$app->session->setFlash('success', 'Komentar berhasil dilaporkan ke Admin.');
+        return $this->redirect(['post/view', 'id' => $comment->post_id]);
+    }
+    
 
     /**
      * Finds the Post model based on its primary key value.
